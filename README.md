@@ -4,7 +4,7 @@
 ## Dependencies
 - [PyTorch] == 2.7.1
 - [python] == 3.9 
-- [cuda] >= 12.6 
+- [cuda] == 12.6 
 ## Dataset:
 
 - We use UMLS、Kinship、FB15k-237 and WN18RR datasets for knowledge graph link prediction. 
