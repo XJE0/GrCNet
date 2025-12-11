@@ -139,7 +139,7 @@ class GrCNetHeadSelector(nn.Module):
         return torch.softmax(head_scores, dim=0)
 
     def _soft_head_selection(self, head_scores):
-        """软选择：使用Gumbel-Softmax进行可微分的头选择"""
+        """软选择：使用Gumbel-sigmoid进行可微分的头选择"""
         temperature = 0.1
         gumbel_noise = -torch.log(-torch.log(torch.rand_like(head_scores) + 1e-10) + 1e-10)
         noisy_scores = (head_scores + gumbel_noise) / temperature
@@ -442,7 +442,7 @@ class GrCNetGAT(nn.Module):
 
 class GrCNet(nn.Module):
     """
-    GrCNet知识图谱GAT模型 - 支持多头注意力筛选
+    GrCNet模型
     """
 
     def __init__(self, initial_entity_emb, initial_relation_emb, entity_out_dim, relation_out_dim,
@@ -544,7 +544,7 @@ class GrCNet(nn.Module):
 
 class GrCNetConvOnly(nn.Module):
     """
-    GrCNet仅卷积的知识图谱模型
+    GrCNet仅卷积的模型
     使用预训练的GAT嵌入，只训练卷积部分
     """
 
