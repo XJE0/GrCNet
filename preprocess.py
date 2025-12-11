@@ -678,7 +678,7 @@ class Corpus:
         for iters in range(1):
             start_time = time.time()
             
-            # 🆕 修改：使用验证集而不是测试集
+            #使用验证集
             indices = [i for i in range(len(self.validation_indices))]
             batch_indices = self.validation_indices[indices, :]
             print(f"验证集长度: {len(self.validation_indices)}")
@@ -705,7 +705,7 @@ class Corpus:
                 new_x_batch_head = np.tile(batch_indices[i], (len(entity_list), 1))
                 new_x_batch_head[:, 0] = entity_list  # 替换头实体为所有实体
 
-                # 🆕 修改：过滤已存在的有效三元组（避免假阴性）- 使用所有有效三元组
+                # 过滤已存在的有效三元组（避免假阴性）- 使用所有有效三元组
                 invalid_indices = []
                 for idx in range(len(new_x_batch_head)):
                     triple = (new_x_batch_head[idx][0], new_x_batch_head[idx][1], new_x_batch_head[idx][2])
@@ -734,7 +734,7 @@ class Corpus:
                 new_x_batch_tail = np.tile(batch_indices[i], (len(entity_list), 1))
                 new_x_batch_tail[:, 2] = entity_list  # 替换尾实体为所有实体
 
-                # 🆕 修改：过滤已存在的有效三元组
+                # 过滤已存在的有效三元组
                 invalid_indices = []
                 for idx in range(len(new_x_batch_tail)):
                     triple = (new_x_batch_tail[idx][0], new_x_batch_tail[idx][1], new_x_batch_tail[idx][2])
