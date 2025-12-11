@@ -5,11 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from copy import deepcopy
-from preprocess import (  # 修改导入：从合并的preprocess.py导入所有需要的函数和类
-    read_entity_from_id, read_relation_from_id, 
-    init_embeddings, build_data, Corpus, save_model
-)
-
+from preprocess import  read_entity_from_id, read_relation_from_id,  init_embeddings, build_data, Corpus, save_model
 import random
 import argparse
 import os
@@ -20,7 +16,7 @@ import pickle
 import gc
 import subprocess
 
-# 🎯 设置随机种子
+# 设置随机种子
 def set_seed(seed=42):
     random.seed(seed)
     np.random.seed(seed)
@@ -34,7 +30,7 @@ def set_seed(seed=42):
 
 # 设置随机种子
 set_seed(42)
-print("🎯 随机种子已设置为 42")
+print("随机种子已设置为 42")
 
 CUDA_LAUNCH_BLOCKING = 1
 
@@ -87,23 +83,22 @@ def parse_args():
                       help="Number of output channels in conv layer")
     args.add_argument("-drop_conv", "--drop_conv", type=float,
                       default=0.3, help="Dropout probability for convolution layer")
-    # 🆕 修改：默认启动多头注意力筛选，但会根据平均入度自动调整
+    # 默认启动多头注意力筛选，但会根据平均入度自动调整
     args.add_argument("-head_sel_ratio", "--head_selection_ratio", type=float,
                       default=1, help="Ratio of heads to keep during selection")
 
-    # 🆕 新增：随机种子参数
+    # 随机种子参数
     args.add_argument("-seed", "--seed", type=int,
                       default=42, help="Random seed for reproducibility")
 
-    # 🆕 新增：相似度计算方法选择参数
+    # 相似度计算方法选择参数
     args.add_argument("-sim_method", "--similarity_method", type=str,
                       default="jaccard", choices=["jaccard", "cosine"],
                       help="Similarity calculation method: jaccard or cosine")
     args = args.parse_args()
 
-    # 🆕 使用命令行参数中的种子
     set_seed(args.seed)
-    print(f"🎯 随机种子已设置为 {args.seed}")
+    print(f"随机种子已设置为 {args.seed}")
 
     return args
 
@@ -114,7 +109,7 @@ args = parse_args()
 
 def load_data(args):
     """
-    优化版本的数据加载函数，支持大规模数据集，考虑出边和入边的分层概念相似性
+    数据加载函数，支持大规模数据集，考虑出边和入边的分层概念相似性
     """
     import time
     start_time = time.time()
@@ -127,7 +122,7 @@ def load_data(args):
     num_relations = len(relation2id)
     print(f"数据统计: {num_entities} 个实体, {num_relations} 个关系")
 
-    # 🎯 验证数据索引范围
+    # 验证数据索引范围
     max_entity_idx = max([max(triple[0], triple[2]) for triple in train_triples])
     max_relation_idx = max([triple[1] for triple in train_triples])
 
@@ -135,12 +130,12 @@ def load_data(args):
     print(f"有效索引范围 - 实体: 0-{num_entities - 1}, 关系: 0-{num_relations - 1}")
 
     if max_entity_idx >= num_entities:
-        print(f"❌ 警告: 实体索引超出范围!")
+        print(f"警告: 实体索引超出范围!")
     if max_relation_idx >= num_relations:
-        print(f"❌ 警告: 关系索引超出范围!")
+        print(f"警告: 关系索引超出范围!")
 
-    # 🆕 计算平均实体入度
-    print("📊 计算平均实体入度...")
+    # 计算平均实体入度
+    print("计算平均实体入度...")
     in_degree_counter = {}
     for triple in train_triples:
         tail_entity = triple[2]  # 尾实体索引
@@ -150,18 +145,18 @@ def load_data(args):
     total_in_degree = sum(in_degree_counter.values())
     avg_in_degree = total_in_degree / num_entities if num_entities > 0 else 0
     
-    print(f"📊 图谱统计信息:")
+    print(f"图谱统计信息:")
     print(f"   - 总实体数: {num_entities}")
     print(f"   - 总入度数: {total_in_degree}")
     print(f"   - 平均实体入度: {avg_in_degree:.2f}")
     
-    # 🆕 根据平均入度自动决定是否使用头筛选
+    # 根据平均入度自动决定是否使用头筛选
     if avg_in_degree < 10:
         args.use_head_selection = False
-        print(f"📊 平均实体入度 < 10，自动禁用头筛选功能")
+        print(f"平均实体入度 < 10，自动禁用头筛选功能")
     else:
         args.use_head_selection = True
-        print(f"📊 平均实体入度 >= 10，自动启用头筛选功能")
+        print(f"平均实体入度 >= 10，自动启用头筛选功能")
     
     # 打印入度分布信息
     max_in_degree = max(in_degree_counter.values()) if in_degree_counter else 0
@@ -367,9 +362,6 @@ def _compute_Q_layered_normal(A_bool, row_sum_out, row_sum_in, row_sum_total,
     S = _compute_layered_similarity_block(A_bool, row_sum_out, row_sum_in, row_sum_total,
                                         similarity_method, np.arange(num_entities), np.arange(num_entities))
     
-    # 注意：A_bool现在是扩展的布尔矩阵，形状为 (num_entities, 2*num_relations)
-    # 但Q矩阵应该保持形状为 (num_entities, num_relations)，因为后续模型期望的是每个关系的权重
-    
     # 分别计算出边和入边的贡献，然后合并
     A_out = A_bool[:, :num_relations]  # 出边部分
     A_in = A_bool[:, num_relations:]   # 入边部分
@@ -480,7 +472,6 @@ def train_gat(args):
     if not os.path.exists(args.output_folder):
         os.makedirs(args.output_folder)
 
-    # 🆕 创建改进的GAT模型（支持多头筛选）
     print("Defining model with head selection")
     print(
         f"Model type -> GAT layer with {args.nheads_GAT[0]} heads, Head selection: {args.use_head_selection}, Ratio: {args.head_selection_ratio}")
@@ -542,12 +533,12 @@ def train_gat(args):
             # forward pass
             entity_embed, relation_embed, _ = model_gat(
                 Corpus_, Corpus_.train_adj_matrix, train_indices)
-            # 🎯 性能监控：添加在这里
+            # 性能监控
             if args.use_head_selection and iters % 50 == 0:  # 每50个迭代监控一次
                 analysis_data = model_gat.get_attention_analysis_data()
                 if analysis_data and 'computation_savings' in analysis_data:
                     savings = analysis_data['computation_savings']
-                    print(f"🎯 头选择统计: {savings['selected_heads']}/{savings['total_heads']} 个头被选中 "
+                    print(f"头选择统计: {savings['selected_heads']}/{savings['total_heads']} 个头被选中 "
                           f"(计算量减少 {savings['computation_reduced']:.1f}%)")
                 # 记录到日志文件
                 with open(train_log_file, 'a') as f:
@@ -579,12 +570,12 @@ def train_gat(args):
         avg_loss = sum(epoch_loss) / len(epoch_loss)
         epoch_time = time.time() - start_time
 
-        # 🎯 性能监控：每个epoch结束时的总结
+        # 性能监控：
         if args.use_head_selection:
             analysis_data = model_gat.get_attention_analysis_data()
             if analysis_data and 'computation_savings' in analysis_data:
                 savings = analysis_data['computation_savings']
-                print(f"📊 Epoch {epoch} 头选择总结: {savings['selected_heads']}/{savings['total_heads']} 个头被选中 "
+                print(f"Epoch {epoch} 头选择总结: {savings['selected_heads']}/{savings['total_heads']} 个头被选中 "
                       f"(总体计算量减少 {savings['computation_reduced']:.1f}%)")
 
                 with open(train_log_file, 'a') as f:
@@ -609,12 +600,12 @@ def train_conv(args):
     if not os.path.exists(conv_output_folder):
         os.makedirs(conv_output_folder)
 
-    # 🆕 创建模型时使用相同的头选择参数
+    #创建模型时使用相同的头选择参数
     print("Defining model")
     model_gat = GrCNet(entity_embeddings, relation_embeddings, args.entity_out_dim, args.entity_out_dim,
                                 args.drop_GAT, args.alpha, args.nheads_GAT,
-                                use_head_selection=args.use_head_selection,  # 🆕 保持一致
-                                head_selection_ratio=args.head_selection_ratio)  # 🆕 保持一致
+                                use_head_selection=args.use_head_selection,  # 保持一致
+                                head_selection_ratio=args.head_selection_ratio)  # 保持一致
 
     print("Only Conv model trained")
     model_conv = GrCNetConvOnly(entity_embeddings, relation_embeddings, args.entity_out_dim, args.entity_out_dim,
@@ -630,7 +621,7 @@ def train_conv(args):
         strict=False
     )
 
-    # 🆕 确保嵌入参数正确传递
+    # 确保嵌入参数正确传递
     model_conv.final_entity_embeddings.data = model_gat.final_entity_embeddings.data
     model_conv.final_relation_embeddings.data = model_gat.final_relation_embeddings.data
 
@@ -722,7 +713,7 @@ def evaluate_conv(args, unique_entities):
                                  args.drop_GAT, args.drop_conv, args.alpha, args.alpha_conv,
                                  args.nheads_GAT, args.out_channels)
 
-    # 🆕 修复：使用 strict=False 加载模型
+    
     conv_checkpoint_path = f'{args.output_folder}conv/trained_{args.epochs_conv - 1}.pth'
     if os.path.exists(conv_checkpoint_path):
         model_conv.load_state_dict(torch.load(conv_checkpoint_path), strict=False)
@@ -736,7 +727,6 @@ def evaluate_conv(args, unique_entities):
         Corpus_.get_validation_pred(args, model_conv, unique_entities)
 
 
-# 自动检测并恢复训练
 print("自动检测训练状态...")
 train_gat(args)
 train_conv(args)
